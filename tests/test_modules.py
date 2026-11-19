@@ -192,8 +192,8 @@ def test_every_temperature_module_handles_a_herd_file() -> None:
     assert any(w.startswith("No drinking dips were found") for w in intake.warnings)
 
 
-# Notes the water intake page doesn't show as warning boxes: the same facts are in its
-# metrics ("Drinking readings from"), chart caption and "How this is calculated" notes.
+# Notes the water intake page doesn't show as warning boxes: its "Drinking readings from"
+# metric and chart caption cover them, and the README has the calibration.
 _INTAKE_HIDDEN = ("Experimental.", "Drinking readings are estimated", "Days with gaps")
 
 
@@ -208,6 +208,8 @@ def test_intake_shows_no_boxes_for_calibration_estimated_drinking_or_gappy_days(
     drinking = run_module(loaded, "drinking", DrinkingOptions(cow=cow))
     assert intake.tables[0].frame["Coverage %"].between(50, 99).any()
     assert not any(w.startswith(_INTAKE_HIDDEN) for w in intake.warnings)
+    assert intake.notes == ()  # no "How this is calculated" section
+    assert drinking.notes  # other modules keep theirs
     # Still shown: why a day has no estimate, and the drinking summary's own note.
     assert any(w.startswith("No estimate for days under 50%") for w in intake.warnings)
     assert any(w.startswith("Drinking readings are estimated") for w in drinking.warnings)

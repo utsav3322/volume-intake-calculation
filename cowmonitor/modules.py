@@ -28,22 +28,15 @@ from cowmonitor.drinking import (
     marks_from_copy,
 )
 from cowmonitor.intake import (
-    CALIBRATION,
     LITRES_PER_GALLON,
     MIN_DAY_COVERAGE,
-    MIN_DIFFERENCE_C,
-    NORMAL_QUANTILE,
-    NORMAL_WINDOW_HOURS,
     RECOVERY_HOURS,
     REFERENCE_WATER_C,
-    REWARM_LITRES_PER_HOUR,
-    WATER_MATCH_HOURS,
     IntakeEstimate,
     estimate_intake,
 )
 from cowmonitor.loaders import (
     LIKELY_COPY_WARNING,
-    RUMEN_C,
     WATER_MAX_C,
     WATER_MIN_C,
     Cow,
@@ -595,7 +588,6 @@ def _run_intake(data: TemperatureData, options: IntakeOptions) -> ModuleResult:
             ),
         ),
         warnings=tuple(warnings),
-        notes=_INTAKE_NOTES,
     )
 
 
@@ -672,44 +664,6 @@ def _intake_charts(
 def _average_gallons(daily: pd.DataFrame) -> float | None:
     estimated = daily["Gallons"].dropna()
     return float(estimated.mean()) if not estimated.empty else None
-
-
-_INTAKE_NOTES = (
-    "Heat balance: every litre drunk has to be warmed from the water temperature to the cow's "
-    "normal temperature (4.19 kJ per litre per °C). The body supplies that heat while the rumen "
-    "reading climbs back, so a drink's dip area (degrees below normal × hours, from its start "
-    f"until {RECOVERY_HOURS:g} hours later or the next drink) measures it: litres = K × area ÷ "
-    "(normal − water temperature).",
-    f"The cow's normal temperature is the {NORMAL_QUANTILE * 100:.0f}th percentile of its "
-    f"readings over the surrounding {NORMAL_WINDOW_HOURS:g} hours, so the slow climb back after "
-    f"each drink doesn't pull it down; times when it is under {RUMEN_C:g} °C (a bolus not yet "
-    "in the cow) are left out. Ordinary readings sit a little below the normal, and each drink's "
-    "area includes that small gap (about a quarter of a drink's area on the test cows). So the "
-    "estimate partly follows how often a cow drinks: roughly 15% high for a cow that sips far "
-    "more often than they did, and as much low for one that drinks far less often. A day's "
-    "litres are scaled up for missing readings, because a gap hides drinks; days under "
-    f"{MIN_DAY_COVERAGE:.0f}% covered get no estimate.",
-    f"K = {REWARM_LITRES_PER_HOUR:g} litres per hour, set so the estimates add up to water meters "
-    f"{CALIBRATION.meters} (cows {CALIBRATION.cows}, {CALIBRATION.period}), with the "
-    f"{REFERENCE_WATER_C:g} °C ({REFERENCE_WATER_C * 9 / 5 + 32:g} °F) measured in their water "
-    "bowls. The meters alone can't tell the water temperature: assuming anything from "
-    f"{CALIBRATION.sweep_c[0]:g} to {CALIBRATION.sweep_c[1]:g} °C and refitting K fits them "
-    "equally well (daily error "
-    f"{CALIBRATION.sweep_error_gal[0]:.2f}–{CALIBRATION.sweep_error_gal[1]:.2f} gal), so K is "
-    "only as right as that measured temperature. Enter another value only when you know the "
-    "water was different.",
-    f"On those {CALIBRATION.days} complete meter days, daily totals came within "
-    f"{CALIBRATION.daily_error_gal:.1f} gal ({CALIBRATION.daily_error_pct:.0f}%) of the meter on "
-    "average; calibrated on one meter and checked on the other, "
-    f"{CALIBRATION.cross_error_gal[0]:.2f}–{CALIBRATION.cross_error_gal[1]:.2f} gal a day; hour by "
-    f"hour the estimate and the meter correlate at r = {CALIBRATION.hourly_r:.2f}. Their daily "
-    "water use varied little, so whether the estimate follows bigger changes, such as a sick cow "
-    "drinking less, is untested.",
-    "Water temperature: from the water file, the reading nearest each drink's start within "
-    f"{WATER_MATCH_HOURS:g} hours; otherwise the value in the settings. Water within "
-    f"{MIN_DIFFERENCE_C:g} °C of the cow's temperature gives no estimate, and neither does its "
-    "day.",
-)
 
 
 def _water_label(estimate: IntakeEstimate, setting_c: float) -> str:
