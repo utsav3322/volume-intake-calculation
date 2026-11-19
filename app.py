@@ -15,7 +15,7 @@ from pathlib import PurePath
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from cowmonitor.access import is_passcode
+from cowmonitor.access import PASSCODE, is_passcode
 from cowmonitor.intake import REFERENCE_WATER_C
 from cowmonitor.loaders import (
     WATER_MAX_C,
@@ -42,6 +42,7 @@ from cowmonitor.modules import (
 )
 from cowmonitor.results import Metric, ModuleResult, table_to_csv
 from cowmonitor.timezones import DEFAULT_TIMEZONE, available_timezones, format_local
+from passcode_boxes import passcode_boxes
 
 logger = logging.getLogger("cowmonitor.app")
 
@@ -76,14 +77,12 @@ def main() -> None:
 
 
 def _passcode_gate() -> bool:
-    """Show only the passcode screen until the passcode is entered in this browser session."""
+    """Show only the passcode boxes until the passcode is entered in this browser session."""
     if st.session_state.get(_UNLOCKED):
         return True
     st.title("CowMonitor toolkit")
-    with st.form("passcode-form", clear_on_submit=True):
-        entered = st.text_input("Passcode", type="password", key="passcode")
-        submitted = st.form_submit_button("Unlock")
-    if submitted:
+    entered = passcode_boxes(key="passcode", length=len(PASSCODE))
+    if entered is not None:
         if is_passcode(entered):
             st.session_state[_UNLOCKED] = True
             st.rerun()

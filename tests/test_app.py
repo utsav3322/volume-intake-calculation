@@ -27,9 +27,26 @@ def _page() -> AppTest:
     return page.run()
 
 
-def _enter_passcode(page: AppTest, passcode: str) -> AppTest:
-    page.text_input(key="passcode").input(passcode)
-    return next(button for button in page.button if button.label == "Unlock").click().run()
+@pytest.fixture
+def typed(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Codes "typed" into the passcode boxes; like the browser, each is sent on one run."""
+    codes: list[str] = []
+
+    def boxes(*, key: str, length: int) -> str | None:
+        assert (key, length) == ("passcode", len(PASSCODE))
+        return codes.pop(0) if codes else None
+
+    monkeypatch.setattr("passcode_boxes.passcode_boxes", boxes)
+    return codes
+
+
+def _enter_passcode(page: AppTest, typed: list[str], passcode: str) -> AppTest:
+    typed.append(passcode)
+    return page.run()
+
+
+def _passcode_boxes(page: AppTest) -> list[object]:
+    return list(page.get("bidi_component"))
 
 
 def _upload(page: AppTest, name: str, content: bytes) -> AppTest:
@@ -63,34 +80,36 @@ def _help_texts(page: AppTest) -> list[str]:
 
 @pytest.mark.unit
 def test_the_passcode_screen_comes_first() -> None:
-    page = _locked_page()
+    page = _locked_page()  # the real passcode boxes, with nothing typed yet
     assert not page.exception
     assert page.title[0].value == "CowMonitor toolkit"
-    assert [box.label for box in page.text_input] == ["Passcode"]
-    assert page.text_input[0].proto.type == page.text_input[0].proto.PASSWORD
+    assert len(_passcode_boxes(page)) == 1
+    assert not page.text_input
+    assert not page.button, "the boxes send the code themselves; there is no Unlock button"
+    assert not page.error
     assert not page.file_uploader
     assert not [node for node in page.sidebar if not isinstance(node, Block)]
     main = [type(node).__name__ for node in page.main.children.values()]
-    assert main == ["Title", "Block"], "only the title and the passcode form"
+    assert main == ["Title", "UnknownElement"], "only the title and the passcode boxes"
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("passcode", ["", "1234", "0008"])
-def test_a_wrong_passcode_is_refused(passcode: str) -> None:
-    page = _enter_passcode(_locked_page(), passcode)
+@pytest.mark.parametrize("passcode", ["", "1234", "0008", "9000"])
+def test_a_wrong_passcode_is_refused(typed: list[str], passcode: str) -> None:
+    page = _enter_passcode(_locked_page(), typed, passcode)
     assert not page.exception
     assert [error.value for error in page.error] == ["Wrong passcode. Try again."]
     assert not page.file_uploader
-    page = _enter_passcode(page, PASSCODE)
+    page = _enter_passcode(page, typed, PASSCODE)
     assert len(page.file_uploader) == 1
 
 
 @pytest.mark.unit
-def test_the_right_passcode_opens_the_app() -> None:
-    page = _enter_passcode(_locked_page(), PASSCODE)
+def test_the_right_passcode_opens_the_app(typed: list[str]) -> None:
+    page = _enter_passcode(_locked_page(), typed, PASSCODE)
     assert not page.exception
     assert not page.error
-    assert not page.text_input
+    assert not _passcode_boxes(page)
     assert "passcode" not in page.session_state
     assert len(page.file_uploader) == 1
     assert [info.value for info in page.info] == ["Upload a file to begin."]
@@ -302,7 +321,7 @@ def test_start_over_clears_the_file() -> None:
     assert not page.exception
     assert [info.value for info in page.info] == ["Upload a file to begin."]
     assert not page.subheader
-    assert not page.text_input, "Start over clears the file, not the passcode"
+    assert not _passcode_boxes(page), "Start over clears the file, not the passcode"
     assert len(page.file_uploader) == 1
 
 

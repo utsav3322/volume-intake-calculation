@@ -29,15 +29,17 @@ The app opens at <http://127.0.0.1:8501>. Started this way, only this computer c
    **Advanced settings**. Then press **Deploy**.
 3. An app from a private repository is private: only people you invite by email (**Share**)
    can open it, and they still need the passcode. Keep it that way; on the open internet
-   the four-digit passcode alone is easy to guess.
+   the four-character passcode alone is easy to guess.
 
 Every push to `main` updates the online app. Online, uploads are processed on Streamlit's
 servers rather than this computer, and Community Cloud turns its usage statistics on.
 
 ## How to use it
 
-0. **Enter the passcode** and press **Unlock**. It is set in `cowmonitor/access.py`. It is
-   asked again after refreshing the page; **Start over** doesn't ask for it.
+0. **Type the 4-character passcode** into the four boxes, one letter or number per box (letters
+   are case-sensitive); the app opens as soon as the last box is filled (pasting the code works
+   too). It is set in `cowmonitor/access.py`. It is asked again
+   after refreshing the page; **Start over** doesn't ask for it.
 1. **Upload a CSV file.** The app recognises what it is from its contents and lists what it found:
    cows, readings and dates.
 2. **Choose a module.** Only the modules that file can run are offered.
@@ -161,7 +163,7 @@ on, so accuracy on new cows is unknown.
 - Uploads are read in memory and never written to disk or cached between sessions.
 - The app opens with a passcode screen; nothing else, sidebar included, shows until the
   passcode is entered. The passcode is fixed in `cowmonitor/access.py`, so it is a light lock,
-  not real security: four digits are quick to guess, wrong tries aren't limited, and anyone who
+  not real security: four characters are quick to guess, wrong tries aren't limited, and anyone who
   can read the code can see it.
 - Started with `--server.address 127.0.0.1` as above, the app listens on this computer only,
   so other computers can't reach it. Without that option it listens on every network the
@@ -184,7 +186,7 @@ pytest                                   # all tests
 pytest -m unit                           # synthetic data only
 pytest -m integration                    # the project's CSVs (skipped if ../Data is missing)
 pytest --cov --cov-report=term-missing     # cowmonitor/, app.py and tools/
-black . && isort . && ruff check . && mypy cowmonitor app.py tests tools && bandit -r cowmonitor app.py tools
+black . && isort . && ruff check . && mypy cowmonitor app.py passcode_boxes.py tests tools && bandit -r cowmonitor app.py passcode_boxes.py tools
 python -m tools.calibrate_intake         # recalibrate the water intake estimate on 2D and 2F
 ```
 
@@ -196,6 +198,7 @@ functions.
 
 ```
 app.py                 Streamlit page: passcode, upload, module choice, settings form, results
+passcode_boxes.py      the four passcode boxes (a small Streamlit component: HTML, CSS, JS)
 cowmonitor/            calculations (no Streamlit imports, enforced by ruff)
   access.py            the passcode
   loaders.py           read and recognise uploads; split cows
