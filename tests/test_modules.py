@@ -13,6 +13,7 @@ import pytest
 from cowmonitor.intake import REFERENCE_WATER_C
 from cowmonitor.loaders import FileKind, LoadedFile, UnsupportedFileError, load_upload
 from cowmonitor.modules import (
+    HIDDEN_MODULES,
     MODULES,
     AbnormalOptions,
     CalvingOptions,
@@ -33,18 +34,26 @@ def _metric(result: ModuleResult, label: str) -> str:
 
 @pytest.mark.unit
 def test_registry_offers_modules_by_file_kind() -> None:
-    assert [m.key for m in modules_for(FileKind.TEMPERATURE)] == [
-        "abnormal",
-        "calving",
-        "drinking",
-        "intake",
-    ]
+    assert [m.key for m in modules_for(FileKind.TEMPERATURE)] == ["intake"]
     assert [m.key for m in modules_for(FileKind.METER)] == ["water"]
     assert get_module("calving").experimental
     assert get_module("intake").experimental
     assert len(MODULES) == 5
     with pytest.raises(KeyError):
         get_module("overview")
+
+
+@pytest.mark.unit
+def test_hidden_modules_are_kept_and_can_be_offered_again(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert frozenset({"abnormal", "calving", "drinking"}) == HIDDEN_MODULES
+    assert all(get_module(key).accepts is FileKind.TEMPERATURE for key in HIDDEN_MODULES)
+    monkeypatch.setattr("cowmonitor.modules.HIDDEN_MODULES", frozenset())
+    assert [m.key for m in modules_for(FileKind.TEMPERATURE)] == [
+        "abnormal",
+        "calving",
+        "drinking",
+        "intake",
+    ]
 
 
 @pytest.mark.unit

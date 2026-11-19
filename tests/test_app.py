@@ -44,6 +44,16 @@ def _metrics(page: AppTest) -> dict[str, str]:
     return {metric.label: metric.value for metric in page.metric}
 
 
+@pytest.fixture
+def all_modules(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Offer the modules hidden for now, so their pages stay tested until they come back."""
+    monkeypatch.setattr("cowmonitor.modules.HIDDEN_MODULES", frozenset())
+
+
+def _captions(page: AppTest) -> list[str]:
+    return [caption.value for caption in page.caption]
+
+
 def _help_texts(page: AppTest) -> list[str]:
     """Every tooltip on the page; a non-empty one shows as a "?" icon or a hover text."""
     nodes = [*page.sidebar, *page.main]
@@ -120,6 +130,7 @@ def test_sidebar_has_only_the_time_zone_and_start_over() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.usefixtures("all_modules")
 def test_no_help_tooltips_anywhere() -> None:
     page = _page()
     assert _help_texts(page) == []
@@ -135,7 +146,29 @@ def test_no_help_tooltips_anywhere() -> None:
 
 
 @pytest.mark.unit
-def test_temperature_file_offers_four_modules_without_the_overview() -> None:
+def test_temperature_file_offers_only_the_water_intake_estimate() -> None:
+    content = to_csv_bytes(temperature_frame(steady_temperatures(3)))
+    page = _upload(_page(), "cow.csv", content)
+    module = page.radio(key="module-temperature")
+    assert module.options == ["Water intake estimate (experimental)"]
+    assert module.value == "intake"
+    assert "Not available for this file: Daily water use (needs a water-meter export)." in (
+        _captions(page)
+    )
+
+
+@pytest.mark.unit
+def test_meter_file_doesnt_name_the_hidden_modules() -> None:
+    page = _upload(_page(), "2D.csv", meter_csv())
+    assert page.radio(key="module-meter").options == ["Daily water use"]
+    assert "Not available for this file: Water intake estimate (needs a temperature export)." in (
+        _captions(page)
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.usefixtures("all_modules")
+def test_temperature_file_offers_four_modules_when_all_are_switched_on() -> None:
     content = to_csv_bytes(temperature_frame(steady_temperatures(3)))
     module = _upload(_page(), "cow.csv", content).radio(key="module-temperature")
     assert module.options == [
@@ -214,6 +247,7 @@ def test_water_file_in_step_one_gets_a_helpful_message() -> None:
     ("module", "inputs"),
     [("abnormal", ["selectbox"]), ("calving", ["selectbox", "checkbox"])],
 )
+@pytest.mark.usefixtures("all_modules")
 def test_settings_offer_no_choice_of_method(module: str, inputs: list[str]) -> None:
     content = to_csv_bytes(temperature_frame(steady_temperatures(3)))
     page = _upload(_page(), "cow.csv", content)
@@ -225,6 +259,7 @@ def test_settings_offer_no_choice_of_method(module: str, inputs: list[str]) -> N
 
 
 @pytest.mark.unit
+@pytest.mark.usefixtures("all_modules")
 def test_abnormal_check_always_uses_per_day_limits() -> None:
     content = to_csv_bytes(temperature_frame(steady_temperatures(3)))
     page = _generate(_upload(_page(), "cow.csv", content))
@@ -233,6 +268,7 @@ def test_abnormal_check_always_uses_per_day_limits() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.usefixtures("all_modules")
 def test_calving_alert_always_uses_the_fixed_version() -> None:
     content = to_csv_bytes(temperature_frame(steady_temperatures(3)))
     page = _upload(_page(), "cow.csv", content)
@@ -245,6 +281,7 @@ def test_calving_alert_always_uses_the_fixed_version() -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.usefixtures("all_modules")
 def test_changing_module_or_time_zone_hides_old_results() -> None:
     content = to_csv_bytes(temperature_frame(steady_temperatures(3)))
     page = _generate(_upload(_page(), "cow.csv", content))
@@ -280,6 +317,7 @@ def test_start_over_clears_the_file() -> None:
         ("DrinkingData/2D.csv", "water", "Daily water use", "Total gallons", "674.1"),
     ],
 )
+@pytest.mark.usefixtures("all_modules")
 def test_each_module_through_the_page(
     data_dir: Path, relative_path: str, module: str, title: str, metric: str, value: str
 ) -> None:
@@ -314,6 +352,7 @@ def test_intake_estimate_with_the_project_files_and_the_sample_water_file(data_d
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("all_modules")
 def test_drinking_summary_with_the_cowmonitor_copy(data_dir: Path) -> None:
     raw = (data_dir / "DrinkingData/1354_raw.csv").read_bytes()
     copy = (data_dir / "DrinkingData/1354_bouts.csv").read_bytes()
@@ -327,6 +366,7 @@ def test_drinking_summary_with_the_cowmonitor_copy(data_dir: Path) -> None:
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("all_modules")
 def test_wrong_copy_shows_an_error(data_dir: Path) -> None:
     raw = (data_dir / "DrinkingData/1354_raw.csv").read_bytes()
     other = (data_dir / "DrinkingData/1568_bouts.csv").read_bytes()
@@ -340,6 +380,7 @@ def test_wrong_copy_shows_an_error(data_dir: Path) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.usefixtures("all_modules")
 def test_switching_module_and_back_clears_the_old_result() -> None:
     content = to_csv_bytes(temperature_frame(steady_temperatures(3)))
     page = _upload(_page(), "cow.csv", content)
@@ -366,6 +407,7 @@ def test_unexpected_failure_shows_a_friendly_error(monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("all_modules")
 def test_meter_file_in_the_copy_box_gets_a_helpful_message(data_dir: Path) -> None:
     raw = (data_dir / "DrinkingData/1354_417_raw.csv").read_bytes()
     meter = (data_dir / "DrinkingData/2d_417.csv").read_bytes()
@@ -379,6 +421,7 @@ def test_meter_file_in_the_copy_box_gets_a_helpful_message(data_dir: Path) -> No
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("all_modules")
 def test_week_files_pair_up_in_the_drinking_summary(data_dir: Path) -> None:
     raw = (data_dir / "DrinkingData/1354_417_raw.csv").read_bytes()
     copy = (data_dir / "DrinkingData/1354_417_bouts.csv").read_bytes()

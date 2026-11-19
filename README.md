@@ -43,8 +43,8 @@ servers rather than this computer, and Community Cloud turns its usage statistic
 2. **Choose a module.** Only the modules that file can run are offered.
 3. **Adjust settings if needed**, then press **Generate**.
 
-The results show headline numbers, charts, tables with a **Download CSV** button, and a
-"How this is calculated" note. The farm time zone is in the sidebar (default US Eastern);
+The results show headline numbers, charts, tables with a **Download CSV** button, and,
+except for the water intake estimate, a "How this is calculated" note. The farm time zone is in the sidebar (default US Eastern);
 CowMonitor timestamps are UTC and are shown in that zone. **Start over** in the sidebar
 clears the file and results.
 
@@ -69,11 +69,15 @@ as the 15 °C setting.
 
 ## Modules
 
+For now the page offers only the **water intake estimate** and **daily water use**. The
+other three are switched off: they are listed in `HIDDEN_MODULES` in `cowmonitor/modules.py`,
+their code and tests stay, and taking a name out of that set offers it again.
+
 | Module | Upload | What you get |
 |---|---|---|
-| Abnormal drinking check (model 1) | Temperature export | Normal / Abnormal for every cow, which rule fired, and the counts against their limits. |
-| Calving alert (model 2, experimental) | Temperature export | Whether there is a calving-like temperature drop and when, whether the temperature rises again, and a half-day chart. |
-| Daily drinking summary | Temperature export, plus the drinking-removed copy if you have it | Drinking dips per day and the project's 8 daily drinking numbers. Exact with the copy, estimated without it. |
+| Abnormal drinking check (model 1, switched off) | Temperature export | Normal / Abnormal for every cow, which rule fired, and the counts against their limits. |
+| Calving alert (model 2, experimental, switched off) | Temperature export | Whether there is a calving-like temperature drop and when, whether the temperature rises again, and a half-day chart. |
+| Daily drinking summary (switched off) | Temperature export, plus the drinking-removed copy if you have it | Drinking dips per day and the project's 8 daily drinking numbers. Exact with the copy, estimated without it. |
 | Water intake estimate (experimental) | Temperature export, plus the drinking-removed copy and a water temperature file if you have them | Litres and gallons drunk per day and per drink by one cow, from its drinking dips and the water temperature (heat balance; see below). |
 | Daily water use | Water-meter export | Gallons, flow events and minutes of flow per day, and the average by hour of day. Totals are for all cows on that meter together. |
 

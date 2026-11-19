@@ -28,7 +28,6 @@ from cowmonitor.loaders import (
     load_water_temperature,
 )
 from cowmonitor.modules import (
-    MODULES,
     AbnormalOptions,
     CalvingOptions,
     DrinkingOptions,
@@ -38,6 +37,7 @@ from cowmonitor.modules import (
     WaterOptions,
     get_module,
     modules_for,
+    offered_modules,
     run_module,
 )
 from cowmonitor.results import Metric, ModuleResult, table_to_csv
@@ -179,11 +179,12 @@ def _module_step(loaded: LoadedFile) -> ModuleSpec:
         key=f"module-{loaded.kind.value}",
         on_change=_clear_result,
     )
-    unavailable = [spec.title for spec in MODULES if spec.accepts is not loaded.kind]
+    unavailable = [spec.title for spec in offered_modules() if spec.accepts is not loaded.kind]
     needs = (
         "a water-meter export" if loaded.kind is FileKind.TEMPERATURE else "a temperature export"
     )
-    st.caption(f"Not available for this file: {', '.join(unavailable)} (needs {needs}).")
+    if unavailable:
+        st.caption(f"Not available for this file: {', '.join(unavailable)} (needs {needs}).")
     return get_module(str(key))
 
 

@@ -102,8 +102,19 @@ MODULES: tuple[ModuleSpec, ...] = (
 )
 
 
+# Switched off for now at the owner's request (19 November 2026): the page doesn't offer
+# these, but their code and tests stay. Take a key out of this set to offer it again.
+HIDDEN_MODULES: frozenset[str] = frozenset({"abnormal", "calving", "drinking"})
+
+
+def offered_modules() -> tuple[ModuleSpec, ...]:
+    """The modules the page offers, in menu order."""
+    return tuple(spec for spec in MODULES if spec.key not in HIDDEN_MODULES)
+
+
 def modules_for(kind: FileKind) -> tuple[ModuleSpec, ...]:
-    return tuple(spec for spec in MODULES if spec.accepts is kind)
+    """The offered modules that can run on this kind of file."""
+    return tuple(spec for spec in offered_modules() if spec.accepts is kind)
 
 
 def get_module(key: str) -> ModuleSpec:
