@@ -19,6 +19,7 @@ from cowmonitor.abnormal import (
 )
 from cowmonitor.calving import CalvingResult, CalvingVersion, check_calving
 from cowmonitor.drinking import (
+    ESTIMATED_WARNING,
     NOTEBOOK_FEATURES,
     DrinkingMarks,
     DrinkingSource,
@@ -560,6 +561,8 @@ def _run_intake(data: TemperatureData, options: IntakeOptions) -> ModuleResult:
         raise ValueError(f"Water temperature must be {WATER_MIN_C:g}–{WATER_MAX_C:g} °C.")
     cow = data.cow(options.cow)
     marks, warnings = _drinking_marks(data, cow, options.copy)
+    # The "Drinking readings from" metric already says when they are estimated.
+    warnings = [warning for warning in warnings if warning != ESTIMATED_WARNING]
     water = None
     if options.water is not None:
         water = options.water.for_cow(options.water.cows[0].key)
@@ -572,7 +575,7 @@ def _run_intake(data: TemperatureData, options: IntakeOptions) -> ModuleResult:
         default_water_c=options.water_c,
     )
     warnings.extend(estimate.warnings)
-    warnings.extend(_coverage_warnings(estimate.coverage))
+    warnings.extend(_sparse_day_warnings(estimate.coverage))
     return ModuleResult(
         title=f"Water intake estimate: {cow.label}",
         subtitle="Heat balance: litres = K × dip area ÷ (normal − water temperature). Days are "
@@ -591,7 +594,7 @@ def _run_intake(data: TemperatureData, options: IntakeOptions) -> ModuleResult:
                 f"drinks_{_slug(cow)}.csv",
             ),
         ),
-        warnings=(_INTAKE_EXPERIMENTAL, *warnings),
+        warnings=tuple(warnings),
         notes=_INTAKE_NOTES,
     )
 
@@ -671,12 +674,6 @@ def _average_gallons(daily: pd.DataFrame) -> float | None:
     return float(estimated.mean()) if not estimated.empty else None
 
 
-_INTAKE_EXPERIMENTAL = (
-    f"Experimental. Calibrated on {CALIBRATION.cow_count} cows sharing water meters "
-    f"{CALIBRATION.meters} ({CALIBRATION.period}), where daily totals came within about "
-    f"{CALIBRATION.daily_error_pct:.0f}% of the meters. Accuracy on other cows and farms is "
-    "unknown."
-)
 _INTAKE_NOTES = (
     "Heat balance: every litre drunk has to be warmed from the water temperature to the cow's "
     "normal temperature (4.19 kJ per litre per °C). The body supplies that heat while the rumen "
@@ -748,22 +745,15 @@ def _drinks_frame(estimate: IntakeEstimate, timezone: str) -> pd.DataFrame:
     )
 
 
-def _coverage_warnings(coverage: pd.Series) -> list[str]:
-    """Days scaled up for gaps, and days with too few readings for an estimate."""
-    messages = []
-    gappy = coverage[(coverage >= MIN_DAY_COVERAGE) & (coverage < FULL_DAY_COVERAGE)]
-    if not gappy.empty:
-        messages.append(
-            f"Days with gaps in the readings: {_day_list(gappy)}. Their litres are scaled up for "
-            "the missing time, assuming the cow drank at the same rate."
-        )
+def _sparse_day_warnings(coverage: pd.Series) -> list[str]:
+    """Days with too few readings for an estimate (days with gaps are scaled up silently)."""
     sparse = coverage[coverage < MIN_DAY_COVERAGE]
-    if not sparse.empty:
-        messages.append(
-            f"No estimate for days under {MIN_DAY_COVERAGE:.0f}% covered by readings: "
-            f"{_day_list(sparse)}."
-        )
-    return messages
+    if sparse.empty:
+        return []
+    return [
+        f"No estimate for days under {MIN_DAY_COVERAGE:.0f}% covered by readings: "
+        f"{_day_list(sparse)}."
+    ]
 
 
 def _day_list(coverage: pd.Series) -> str:

@@ -21,6 +21,10 @@ from cowmonitor.timezones import coverage_percent, local_dates
 FEATURE_THRESHOLDS = (32.5, 33.0, 33.5)
 MIN_MATCHED_SHARE = 0.9
 DIP_GAP_MINUTES = 15.0
+ESTIMATED_WARNING = (
+    "Drinking readings are estimated from the temperature alone. Upload CowMonitor's "
+    "drinking-removed file for the exact figures the project used."
+)
 
 # Friendly column names and the notebook's feature names they correspond to.
 NOTEBOOK_FEATURES = {
@@ -98,14 +102,7 @@ def estimate_marks(readings: pd.DataFrame, params: DetectorParams | None = None)
     baseline = baseline.fillna(series.median())
     drinking = (series < baseline - params.drop_c).to_numpy()
     marked = readings.reset_index(drop=True).assign(drinking=drinking)
-    return DrinkingMarks(
-        marked,
-        DrinkingSource.ESTIMATED,
-        (
-            "Drinking readings are estimated from the temperature alone. Upload CowMonitor's "
-            "drinking-removed file for the exact figures the project used.",
-        ),
-    )
+    return DrinkingMarks(marked, DrinkingSource.ESTIMATED, (ESTIMATED_WARNING,))
 
 
 def dip_starts(readings: pd.DataFrame) -> pd.Series:

@@ -192,6 +192,27 @@ def test_every_temperature_module_handles_a_herd_file() -> None:
     assert any(w.startswith("No drinking dips were found") for w in intake.warnings)
 
 
+# Notes the water intake page doesn't show as warning boxes: the same facts are in its
+# metrics ("Drinking readings from"), chart caption and "How this is calculated" notes.
+_INTAKE_HIDDEN = ("Experimental.", "Drinking readings are estimated", "Days with gaps")
+
+
+@pytest.mark.unit
+def test_intake_shows_no_boxes_for_calibration_estimated_drinking_or_gappy_days() -> None:
+    # 4 hours missing on 7 April (local time), so that day is 83% covered and scaled up.
+    frame = temperature_frame(steady_temperatures(3)).drop(index=range(408, 456))
+    loaded = load_upload("gappy.csv", to_csv_bytes(frame))
+    assert loaded.temperature is not None
+    cow = loaded.temperature.cows[0].key
+    intake = run_module(loaded, "intake", IntakeOptions(cow=cow))
+    drinking = run_module(loaded, "drinking", DrinkingOptions(cow=cow))
+    assert intake.tables[0].frame["Coverage %"].between(50, 99).any()
+    assert not any(w.startswith(_INTAKE_HIDDEN) for w in intake.warnings)
+    # Still shown: why a day has no estimate, and the drinking summary's own note.
+    assert any(w.startswith("No estimate for days under 50%") for w in intake.warnings)
+    assert any(w.startswith("Drinking readings are estimated") for w in drinking.warnings)
+
+
 @pytest.mark.integration
 def test_intake_module_for_one_cow(load_data_file: Callable[[str], LoadedFile]) -> None:
     raw = load_data_file("DrinkingData/1354_raw.csv")
@@ -210,9 +231,9 @@ def test_intake_module_for_one_cow(load_data_file: Callable[[str], LoadedFile]) 
     assert _metric(estimated, "Drinking readings from") == "Estimated"
     assert 23.0 <= float(_metric(estimated, "Average per day").split()[0]) <= 26.0
     assert _metric(warmer, "Average per day") == "32.8 gal (124 L)"
-    assert exact.warnings[0].startswith("Experimental.")
-    assert any(w.startswith("Days with gaps in the readings: 2024-04-06") for w in exact.warnings)
+    assert not any(w.startswith(_INTAKE_HIDDEN) for w in exact.warnings + estimated.warnings)
     daily, drinks = exact.tables[0].frame, exact.tables[1].frame
+    assert daily["Coverage %"].iloc[0] == pytest.approx(87, abs=1)  # 6 April: scaled, no box
     assert len(daily) == 15
     assert daily["Drinks"].sum() == len(drinks)
     assert drinks["Water from"].eq("setting").all()
