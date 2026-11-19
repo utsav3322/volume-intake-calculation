@@ -1,0 +1,13 @@
+[server]
+# No `address` or `port` here, so Streamlit Community Cloud can reach the app. To keep a copy
+# on this computer to itself, start it with `--server.address 127.0.0.1` (see README).
+# A cow-month of CowMonitor readings is well under 5 MB; this keeps uploads bounded.
+maxUploadSize = 25
+
+[browser]
+gatherUsageStats = false
+
+[client]
+# Show friendly messages in the browser; full tracebacks go to the terminal only.
+showErrorDetails = "none"
+toolbarMode = "minimal"
