@@ -49,6 +49,16 @@ logger = logging.getLogger("cowmonitor.app")
 METRICS_PER_ROW = 3
 _MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]()<>#+\-.!|~$:])")
 _UNLOCKED = "unlocked"
+# Streamlit Community Cloud adds buttons (Share, star, edit, GitHub) to the page's toolbar. An
+# icon-only one is labelled with Cloud's name for it, so this hides the edit (pencil) one and
+# leaves the others. It only matches buttons whose label mentions editing.
+_HIDE_CLOUD_EDIT_BUTTON = """<style>
+[data-testid="stToolbarActionButton"]:has(button[aria-label*="edit" i]),
+[data-testid="stToolbarActionButton"]:has(button[aria-label*="codespace" i]),
+[data-testid="stToolbarActionButton"]:has(button[aria-label*="pencil" i]) {
+  display: none !important;
+}
+</style>"""
 
 
 def _md(text: str) -> str:
@@ -58,6 +68,7 @@ def _md(text: str) -> str:
 
 def main() -> None:
     st.set_page_config(page_title="CowMonitor toolkit", layout="wide")
+    st.html(_HIDE_CLOUD_EDIT_BUTTON)
     if not _passcode_gate():
         return
     st.session_state.setdefault("nonce", 0)
@@ -69,7 +80,7 @@ def main() -> None:
     )
     loaded = _upload_step(timezone)
     if loaded is None:
-        _accepted_files_help()
+        st.info("Upload a file to begin.")
         return
     spec = _module_step(loaded)
     _settings_step(loaded, spec, timezone)
@@ -349,18 +360,6 @@ def _metrics(metrics: tuple[Metric, ...]) -> None:
         columns = st.columns(METRICS_PER_ROW)
         for column, metric in zip(columns, metrics[start : start + METRICS_PER_ROW], strict=False):
             column.metric(metric.label, metric.value)
-
-
-def _accepted_files_help() -> None:
-    st.info("Upload a file to begin.")
-    with st.columns(2)[0]:
-        st.markdown(
-            "**CowMonitor temperature export**\n\n"
-            "Columns `deviceId`, `temperature` and `timestamp` (UTC), optionally `Animal Id`. "
-            "One cow or a whole herd.\n\n"
-            "Modules: abnormal drinking check, calving alert, daily drinking summary, water "
-            "intake estimate."
-        )
 
 
 main()

@@ -32,7 +32,9 @@ The app opens at <http://127.0.0.1:8501>. Started this way, only this computer c
    the four-character passcode alone is easy to guess.
 
 Every push to `main` updates the online app. Online, uploads are processed on Streamlit's
-servers rather than this computer, and Community Cloud turns its usage statistics on.
+servers rather than this computer, and Community Cloud turns its usage statistics on. The app
+hides the edit (pencil) button Community Cloud adds to its toolbar (`_HIDE_CLOUD_EDIT_BUTTON`
+in `app.py`); Share, the star and the GitHub link stay.
 
 ## How to use it
 

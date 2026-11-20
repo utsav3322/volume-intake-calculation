@@ -124,8 +124,21 @@ def test_page_opens_with_an_upload_prompt() -> None:
     assert [info.value for info in page.info] == ["Upload a file to begin."]
     assert len(page.file_uploader) == 1
     texts = [markdown.value for markdown in page.main.markdown]
-    assert any(text.startswith("**CowMonitor temperature export**") for text in texts)
-    assert not any("H2O Degree" in text for text in texts)
+    assert not any("CowMonitor temperature export" in text for text in texts)
+    assert not any("Modules:" in text for text in texts)
+
+
+def _page_css(page: AppTest) -> str:
+    return "".join(element.proto.body for element in page.get("html"))
+
+
+@pytest.mark.unit
+def test_cloud_edit_button_is_hidden_before_and_after_the_passcode() -> None:
+    for page in (_locked_page(), _page()):
+        css = _page_css(page)
+        assert '[data-testid="stToolbarActionButton"]:has(button[aria-label*="edit" i])' in css
+        assert "display: none" in css
+        assert "share" not in css.lower() and "github" not in css.lower()
 
 
 @pytest.mark.unit
