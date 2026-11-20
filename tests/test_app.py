@@ -133,12 +133,12 @@ def _page_css(page: AppTest) -> str:
 
 
 @pytest.mark.unit
-def test_cloud_edit_button_is_hidden_before_and_after_the_passcode() -> None:
+def test_cloud_toolbar_buttons_are_hidden_before_and_after_the_passcode() -> None:
+    # Share, star, GitHub and edit all sit in this one container; the ⋮ menu does not.
     for page in (_locked_page(), _page()):
         css = _page_css(page)
-        assert '[data-testid="stToolbarActionButton"]:has(button[aria-label*="edit" i])' in css
-        assert "display: none" in css
-        assert "share" not in css.lower() and "github" not in css.lower()
+        assert '[data-testid="stToolbarActions"] {\n  display: none !important;' in css
+        assert "stMainMenu" not in css
 
 
 @pytest.mark.unit

@@ -49,13 +49,10 @@ logger = logging.getLogger("cowmonitor.app")
 METRICS_PER_ROW = 3
 _MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]()<>#+\-.!|~$:])")
 _UNLOCKED = "unlocked"
-# Streamlit Community Cloud adds buttons (Share, star, edit, GitHub) to the page's toolbar. An
-# icon-only one is labelled with Cloud's name for it, so this hides the edit (pencil) one and
-# leaves the others. It only matches buttons whose label mentions editing.
-_HIDE_CLOUD_EDIT_BUTTON = """<style>
-[data-testid="stToolbarActionButton"]:has(button[aria-label*="edit" i]),
-[data-testid="stToolbarActionButton"]:has(button[aria-label*="codespace" i]),
-[data-testid="stToolbarActionButton"]:has(button[aria-label*="pencil" i]) {
+# Streamlit Community Cloud adds buttons (Share, star, edit, GitHub) to the page's toolbar, all
+# inside one container. This hides that container; the ⋮ menu sits outside it and stays.
+_HIDE_CLOUD_TOOLBAR_BUTTONS = """<style>
+[data-testid="stToolbarActions"] {
   display: none !important;
 }
 </style>"""
@@ -68,7 +65,7 @@ def _md(text: str) -> str:
 
 def main() -> None:
     st.set_page_config(page_title="CowMonitor toolkit", layout="wide")
-    st.html(_HIDE_CLOUD_EDIT_BUTTON)
+    st.html(_HIDE_CLOUD_TOOLBAR_BUTTONS)
     if not _passcode_gate():
         return
     st.session_state.setdefault("nonce", 0)
